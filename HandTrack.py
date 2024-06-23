@@ -6,12 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 import torch
 
 from umi_ocr import ocr_picture
-import HandTrackingModule as htm
 
-
-detector = htm.handDetector()
-tipIds = [4, 8, 12, 16, 20]  # 手指的关键点索引
-totalFingers = 0  # 总手指数
 
 # 全局加载YOLOv5模型
 model_path = 'yolov5s.pt'  # 替换为你的本地模型路径
