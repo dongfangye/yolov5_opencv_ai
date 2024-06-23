@@ -19,7 +19,7 @@ def load_model(image_path:str):
     # 解析检测结果，并将张量从GPU复制到CPU，再转换为NumPy数组
     labels = results.xyxyn[0][:, -1].cpu().numpy()
     cords = results.xyxyn[0][:, :-1].cpu().numpy()
-    # 绘制检测结果
+    # 返回结果
     n = len(labels)
     for i in range(n):
         row = cords[i]
