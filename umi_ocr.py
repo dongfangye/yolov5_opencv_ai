@@ -4,6 +4,7 @@ import base64
 import os
 from typing import Union
 
+# 中文文字识别, 效果不行, 识别率不高
 def ocr_picture(image_path) -> Union[str, None]:
     """
     调用Umi_OCR识别图片

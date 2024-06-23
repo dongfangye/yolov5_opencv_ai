@@ -2,6 +2,7 @@ import requests
 from pydub import AudioSegment
 from pydub.playback import play
 import pyaudio
+# 文字转语音
 def txt_to_audio(text):
     res = requests.post('http://127.0.0.1:9966/tts', data={
     "text": text,

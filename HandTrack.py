@@ -77,6 +77,34 @@ def is_hand_stable(current_pos, prev_pos, threshold=10):
         return False
     return np.linalg.norm(np.array(current_pos) - np.array(prev_pos)) < threshold
 
+# 计算手指数量
+def count_fingers(hand_landmarks):
+    # 检查每个手指是否伸出
+    fingers = []
+
+    # Thumb
+    thumb_tip = hand_landmarks.landmark[mp_hands.HandLandmark.THUMB_TIP]
+    thumb_ip = hand_landmarks.landmark[mp_hands.HandLandmark.THUMB_IP]
+    if thumb_tip.x < thumb_ip.x:
+        fingers.append(1)
+    else:
+        fingers.append(0)
+
+    # Fingers
+    for idx, landmark in enumerate([mp_hands.HandLandmark.INDEX_FINGER_TIP, 
+                                    mp_hands.HandLandmark.MIDDLE_FINGER_TIP, 
+                                    mp_hands.HandLandmark.RING_FINGER_TIP, 
+                                    mp_hands.HandLandmark.PINKY_TIP]):
+        finger_tip = hand_landmarks.landmark[landmark]
+        finger_pip = hand_landmarks.landmark[landmark - 2]
+        if finger_tip.y < finger_pip.y:
+            fingers.append(1)
+        else:
+            fingers.append(0)
+
+    return sum(fingers)
+
+
 while cap.isOpened():
     success, image = cap.read()
     if not success:
@@ -103,8 +131,13 @@ while cap.isOpened():
                 stable_counts[hand_no] = 0
                 circle_radii[hand_no] = 0
 
+            # 计算伸出的手指数量
+            num_fingers = count_fingers(hand_landmarks)
+            print(5-num_fingers)# 横平放置计算
+
             cv2.circle(image, (cx, cy), 5, (0, 255, 0), -1)
             mp_drawing.draw_landmarks(image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+
     # 判断两手食指指尖是否处于稳定状态
     current_time = time.time()
     if all(pos is not None for pos in current_positions) and all(count >= stability_threshold for count in stable_counts):

@@ -2,7 +2,7 @@ import pyaudio
 import wave
 import keyboard
 from datetime import datetime
-
+# 控制麦克风录音, 并保存成wav文件
 def Init():
     global recording_flag, FORMAT, CHANNELS, RATE, CHUNK
     # 定义一个全局标志来控制录音循环
