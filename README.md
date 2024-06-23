@@ -1,1 +1,3 @@
 # yolov5_opencv_ai
+通过opencv获取视频流
+yolov5进行目标识别
