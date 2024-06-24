@@ -57,6 +57,12 @@ def is_hand_stable(current_pos, prev_pos, threshold=10):
     if prev_pos is None:
         return False
     return np.linalg.norm(np.array(current_pos) - np.array(prev_pos)) < threshold
+# 定义一个函数，当食指、中指和无名指并拢时将鼠标位置重置到屏幕中心
+def fingers_closed():
+    screen_width, screen_height = pyautogui.size()
+    center_x, center_y = screen_width // 2, screen_height // 2
+    pyautogui.moveTo(center_x, center_y)
+    print(f"Mouse moved to center: ({center_x}, {center_y})")
 
 # 计算手指数量
 def count_fingers(hand_landmarks) -> int:
@@ -120,6 +126,7 @@ while cap.isOpened():
             # 获取食指和中指指尖位置
             index_finger_tip = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
             middle_finger_tip = hand_landmarks.landmark[mp_hands.HandLandmark.MIDDLE_FINGER_TIP]
+            ring_finger_tip = hand_landmarks.landmark[mp_hands.HandLandmark.RING_FINGER_TIP]
             h, w, _ = image.shape
             cx, cy = int(index_finger_tip.x * w), int(index_finger_tip.y * h)
             current_positions[hand_no] = (cx, cy)
@@ -128,7 +135,24 @@ while cap.isOpened():
             x = int(index_finger_tip.x * screen_width)
             y = int(index_finger_tip.y * screen_height)
             pyautogui.moveTo(x, y)# 移动鼠标
-            
+
+            # 计算食指、中指和无名指的距离（这里使用简单的距离判断）
+            distance_threshold = 0.05  # 距离的阈值，可以根据实际情况调整
+            distance_index_middle = ((index_finger_tip.x - middle_finger_tip.x) ** 2 + (index_finger_tip.y - middle_finger_tip.y) ** 2) ** 0.5
+            distance_index_ring = ((index_finger_tip.x - ring_finger_tip.x) ** 2 + (index_finger_tip.y - ring_finger_tip.y) ** 2) ** 0.5
+            # 如果食指、中指和无名指的距离都小于阈值，则触发函数
+            if distance_index_middle < distance_threshold and distance_index_ring < distance_threshold:
+                fingers_closed()
+                # 检测食指和中指是否并拢
+            elif distance < 0.05:
+                if not is_clicking:
+                    pyautogui.mouseDown()
+                    is_clicking = True
+            else:
+                if is_clicking:
+                    pyautogui.mouseUp()
+                    is_clicking = False
+            #监测手指是否稳定
             if is_hand_stable(current_positions[hand_no], prev_positions[hand_no]):
                 stable_counts[hand_no] = min(stable_counts[hand_no] + 1, max_stable_count)
                 circle_radii[hand_no] = min(int(stable_counts[hand_no] / 2), max_circle_radius)
@@ -137,15 +161,7 @@ while cap.isOpened():
                 stable_counts[hand_no] = 0
                 circle_radii[hand_no] = 0
 
-            # 检测食指和中指是否并拢
-            if distance < 0.05:
-                if not is_clicking:
-                    pyautogui.mouseDown()
-                    is_clicking = True
-            else:
-                if is_clicking:
-                    pyautogui.mouseUp()
-                    is_clicking = False
+
                     
             # 计算伸出的手指数量
             num_fingers = count_fingers(hand_landmarks) # 后续调用yolov5模型取代此处识别
