@@ -4,7 +4,7 @@ import numpy as np
 # 调用yolov5模型
 # 加载本地训练好的YOLOv5模型
 model_path = 'yolov5s.pt'  # 替换为你的本地模型路径
-model = torch.hub.load('E:/Software/PythonProject/yolo/yolov5-6.0', 'custom', path=model_path, source='local')
+model = torch.hub.load('yolov5', 'custom', path=model_path, source='local')
 def load_model(image_path:str):
     res = list()
     
