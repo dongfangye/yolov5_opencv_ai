@@ -2,3 +2,4 @@ mediapipe
 pyaudio
 opencv-python
 torch
+read
