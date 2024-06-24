@@ -21,7 +21,7 @@ def txt_to_audio(text):
     data = res.json()
     url = data["audio_files"][0]["url"]
     res = requests.get(url)
-    with open('audio.wav', 'wb') as f:
+    with open('audio/audio.wav', 'wb') as f:
         f.write(res.content)
     # 加载音频文件
     audio = AudioSegment.from_wav("audio.wav")

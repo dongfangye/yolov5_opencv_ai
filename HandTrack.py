@@ -7,6 +7,7 @@ import torch
 import pyautogui
 
 from umi_ocr import ocr_picture
+from chattts import txt_to_audio
 
 
 # 全局加载YOLOv5模型
@@ -57,6 +58,11 @@ def is_hand_stable(current_pos, prev_pos, threshold=10):
     if prev_pos is None:
         return False
     return np.linalg.norm(np.array(current_pos) - np.array(prev_pos)) < threshold
+
+# 文字转语音, txt_to_audio函数中有阻塞等待, 建议使用异步调用
+def text_to_speech(text: str) -> None:
+    txt_to_audio(text)
+    
 
 # 计算手指数量
 def count_fingers(hand_landmarks) -> int:
@@ -129,6 +135,7 @@ while cap.isOpened():
             y = int(index_finger_tip.y * screen_height)
             pyautogui.moveTo(x, y)# 移动鼠标
             
+            # 判断手是否处于稳定状态
             if is_hand_stable(current_positions[hand_no], prev_positions[hand_no]):
                 stable_counts[hand_no] = min(stable_counts[hand_no] + 1, max_stable_count)
                 circle_radii[hand_no] = min(int(stable_counts[hand_no] / 2), max_circle_radius)
