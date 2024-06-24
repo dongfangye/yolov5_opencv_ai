@@ -4,29 +4,30 @@ import numpy as np
 import time
 from concurrent.futures import ThreadPoolExecutor
 import torch
+import pyautogui
 
 from umi_ocr import ocr_picture
 
 
 # 全局加载YOLOv5模型
-model_path = 'yolov5s.pt'  # 替换为你的本地模型路径
+model_path = 'weights/yolov5s.pt'  # 替换为你的本地模型路径
 model = torch.hub.load('yolov5-6.0', 'custom', path=model_path, source='local')
+# 创建全局线程池
+executor = ThreadPoolExecutor(max_workers=10)
 
+
+# 调用yolov5模型进行对象检测
 def load_model(image_path: str):
     res = list()
     try:
-        # 读取图像
-        frame = cv2.imread(image_path)
+        frame = cv2.imread(image_path)# 读取图像
         if frame is None:
             raise ValueError(f"Image at {image_path} could not be read")
-        # 将图像转换为RGB
-        img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        # 使用YOLOv5模型进行对象检测
-        results = model(img)
+        img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)# 将图像转换为RGB
+        results = model(img)# 使用YOLOv5模型进行对象检测
         # 解析检测结果，并将张量从GPU复制到CPU，再转换为NumPy数组
         labels = results.xyxyn[0][:, -1].cpu().numpy()
         cords = results.xyxyn[0][:, :-1].cpu().numpy()
-       
         # 绘制检测结果
         n = len(labels)
         for i in range(n):
@@ -39,58 +40,35 @@ def load_model(image_path: str):
         print(f"Error in load_model: {e}")
     return res
 
-# 创建全局线程池
-executor = ThreadPoolExecutor(max_workers=10)
-
-def screenshot(x1, y1, x2, y2, img):
+# 截图 + 调用YOLOv5识别
+def screenshot(x1, y1, x2, y2, img) -> None:
     x1, y1, x2, y2 = map(int, (x1, y1, x2, y2))
     x1, x2 = min(x1, x2), max(x1, x2)
     y1, y2 = min(y1, y2), max(y1, y2)
-
     cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
     cropped = img[y1:y2, x1:x2]
-    cropped_path = 'test.jpg'
+    cropped_path = 'tmp/screenshot.jpg' # 截图保存路径名称
     cv2.imwrite(cropped_path, cropped)
     print("Screenshot taken!")
+    executor.submit(load_model, "tmp/screnshot.jpg")# 异步调用yolov5识别图片, 避免阻塞主程序
 
-    # 异步调用yolov5识别图片, 避免阻塞主程序
-    executor.submit(load_model, "test.jpg")
-
-mp_hands = mp.solutions.hands
-hands = mp_hands.Hands(static_image_mode=False, max_num_hands=2, min_detection_confidence=0.5)
-mp_drawing = mp.solutions.drawing_utils
-
-cap = cv2.VideoCapture(0)
-
-prev_positions = [None, None]
-stable_counts = [0, 0]
-stability_threshold = 30  # 稳定帧数阈值
-max_stable_count = 60  # 最大稳定帧数
-circle_radii = [0, 0]
-max_circle_radius = 30
-
-last_screenshot_time = 0
-screenshot_interval = 5  # 截图间隔（秒）
-
+# 判断手是否处于稳定状态
 def is_hand_stable(current_pos, prev_pos, threshold=10):
     if prev_pos is None:
         return False
     return np.linalg.norm(np.array(current_pos) - np.array(prev_pos)) < threshold
 
 # 计算手指数量
-def count_fingers(hand_landmarks):
-    # 检查每个手指是否伸出
-    fingers = []
-
-    # Thumb
+def count_fingers(hand_landmarks) -> int:
+    fingers = []# 检查每个手指是否伸出
+    # 大拇指, 大拇子不同于其他手指, 需要单独设置判断函数
     thumb_tip = hand_landmarks.landmark[mp_hands.HandLandmark.THUMB_TIP]
     thumb_ip = hand_landmarks.landmark[mp_hands.HandLandmark.THUMB_IP]
     if thumb_tip.x < thumb_ip.x:
         fingers.append(1)
     else:
         fingers.append(0)
-
-    # Fingers
+    # 其余手指
     for idx, landmark in enumerate([mp_hands.HandLandmark.INDEX_FINGER_TIP, 
                                     mp_hands.HandLandmark.MIDDLE_FINGER_TIP, 
                                     mp_hands.HandLandmark.RING_FINGER_TIP, 
@@ -104,7 +82,27 @@ def count_fingers(hand_landmarks):
 
     return sum(fingers)
 
+# 初始化MediaPipe
+mp_hands = mp.solutions.hands
+hands = mp_hands.Hands(static_image_mode=False, max_num_hands=2, min_detection_confidence=0.5)
+mp_drawing = mp.solutions.drawing_utils
 
+screen_width, screen_height = pyautogui.size()
+is_clicking = False
+
+cap = cv2.VideoCapture(0)
+
+prev_positions = [None, None]
+stable_counts = [0, 0]
+stability_threshold = 30  # 稳定帧数阈值
+max_stable_count = 60  # 最大稳定帧数
+circle_radii = [0, 0]
+max_circle_radius = 30
+
+last_screenshot_time = 0
+screenshot_interval = 5  # 截图间隔（秒）
+
+# 主循环, 模块调用
 while cap.isOpened():
     success, image = cap.read()
     if not success:
@@ -116,13 +114,21 @@ while cap.isOpened():
 
     current_positions = [None, None]
 
+    # -------------------------------------------代码功能区----------------------------------------------------
     if results.multi_hand_landmarks:
         for hand_no, hand_landmarks in enumerate(results.multi_hand_landmarks[:2]):
+            # 获取食指和中指指尖位置
             index_finger_tip = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
+            middle_finger_tip = hand_landmarks.landmark[mp_hands.HandLandmark.MIDDLE_FINGER_TIP]
             h, w, _ = image.shape
             cx, cy = int(index_finger_tip.x * w), int(index_finger_tip.y * h)
             current_positions[hand_no] = (cx, cy)
-
+            # 计算食指和中指指尖之间的距离
+            distance = ((index_finger_tip.x - middle_finger_tip.x)**2 + (index_finger_tip.y - middle_finger_tip.y)**2)**0.5
+            x = int(index_finger_tip.x * screen_width)
+            y = int(index_finger_tip.y * screen_height)
+            pyautogui.moveTo(x, y)# 移动鼠标
+            
             if is_hand_stable(current_positions[hand_no], prev_positions[hand_no]):
                 stable_counts[hand_no] = min(stable_counts[hand_no] + 1, max_stable_count)
                 circle_radii[hand_no] = min(int(stable_counts[hand_no] / 2), max_circle_radius)
@@ -131,9 +137,19 @@ while cap.isOpened():
                 stable_counts[hand_no] = 0
                 circle_radii[hand_no] = 0
 
+            # 检测食指和中指是否并拢
+            if distance < 0.05:
+                if not is_clicking:
+                    pyautogui.mouseDown()
+                    is_clicking = True
+            else:
+                if is_clicking:
+                    pyautogui.mouseUp()
+                    is_clicking = False
+                    
             # 计算伸出的手指数量
-            num_fingers = count_fingers(hand_landmarks)
-            print(5-num_fingers)# 横平放置计算
+            num_fingers = count_fingers(hand_landmarks) # 后续调用yolov5模型取代此处识别
+            #print(5-num_fingers)# 横平放置计算
 
             cv2.circle(image, (cx, cy), 5, (0, 255, 0), -1)
             mp_drawing.draw_landmarks(image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
@@ -153,16 +169,19 @@ while cap.isOpened():
     elif all(pos is not None for pos in current_positions[:1]) and all(count >= stability_threshold for count in stable_counts[:1]):
          # 获取当前摄像头图片并保存为ocr.jpg
         if current_time - last_screenshot_time > screenshot_interval:
-            cv2.imwrite('ocr.jpg', image)
+            cv2.imwrite('tmp/ocr.jpg', image)
             print("OCR image saved!")
             # 线程调用ocr识别
-            executor.submit(ocr_picture, "ocr.jpg")
+            executor.submit(ocr_picture, "tmp/ocr.jpg")
             last_screenshot_time = current_time
     else:
         #print("Not stable")
         pass
 
 
+    # -----------------------------------------功能区截至此----------------------------------------------
+
+    # 更新上一帧位置
     for i in range(2):
         prev_positions[i] = current_positions[i] if current_positions[i] else None
 
