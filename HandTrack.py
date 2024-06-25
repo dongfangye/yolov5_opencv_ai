@@ -9,14 +9,19 @@ import pyautogui
 from umi_ocr import ocr_picture
 from chattts import txt_to_audio
 
-
-# 全局加载YOLOv5模型
+# -------------------------------------------------yolov5模型加载区-----------------------------------------------
+# 原态yolov5s模型
 model_path = 'weights/yolov5s.pt'  # 替换为你的本地模型路径
 model = torch.hub.load('yolov5-6.0', 'custom', path=model_path, source='local')
+# 高灿手指识别模型
+model_finger_path = "weights/finger_model.pt"
+model_finger = torch.hub.load("yolov5-6.0", "custom", path=model_finger_path, source="local")
+# -------------------------------------------------yolov5截至区-----------------------------------------------
+
 # 创建全局线程池
 executor = ThreadPoolExecutor(max_workers=10)
 
-
+# ----------------------------------------------------功能模块存放区---------------------------------------------
 # 调用yolov5模型进行对象检测
 def load_model(image_path: str):
     res = list()
@@ -87,6 +92,7 @@ def count_fingers(hand_landmarks) -> int:
             fingers.append(0)
 
     return sum(fingers)
+# ----------------------------------------------------功能模块截至此---------------------------------------------
 
 # 初始化MediaPipe
 mp_hands = mp.solutions.hands
