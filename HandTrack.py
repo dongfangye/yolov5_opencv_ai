@@ -14,7 +14,7 @@ from chattts import txt_to_audio
 model_path = 'weights/yolov5s.pt'  # 替换为你的本地模型路径
 model = torch.hub.load('yolov5-6.0', 'custom', path=model_path, source='local')
 # 高灿手指识别模型
-model_finger_path = "weights/finger_model.pt"
+model_finger_path = "weights/finger.pt"
 model_finger = torch.hub.load("yolov5-6.0", "custom", path=model_finger_path, source="local")
 # -------------------------------------------------yolov5截至区-----------------------------------------------
 
