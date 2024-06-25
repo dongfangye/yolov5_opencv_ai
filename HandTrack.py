@@ -5,6 +5,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 import torch
 import pyautogui
+from collections import deque
 
 from umi_ocr import ocr_picture
 from chattts import txt_to_audio
@@ -92,6 +93,13 @@ def count_fingers(hand_landmarks) -> int:
             fingers.append(0)
 
     return sum(fingers)
+# 鼠标平滑移动算法
+def smooth_coordinates(x, y):
+    x_deque.append(x)
+    y_deque.append(y)
+    smooth_x = int(np.mean(x_deque))
+    smooth_y = int(np.mean(y_deque))
+    return smooth_x, smooth_y
 # ----------------------------------------------------功能模块截至此---------------------------------------------
 
 # 初始化MediaPipe
@@ -114,6 +122,11 @@ max_circle_radius = 30
 last_screenshot_time = 0
 screenshot_interval = 5  # 截图间隔（秒）
 
+# 鼠标平滑算法: 平滑参数
+smooth_factor = 5
+x_deque = deque(maxlen=smooth_factor)
+y_deque = deque(maxlen=smooth_factor)
+
 # 主循环, 模块调用
 while cap.isOpened():
     success, image = cap.read()
@@ -126,7 +139,7 @@ while cap.isOpened():
 
     current_positions = [None, None]
 
-    # -------------------------------------------代码功能区----------------------------------------------------
+# -------------------------------------------代码功能区----------------------------------------------------
     if results.multi_hand_landmarks:
         for hand_no, hand_landmarks in enumerate(results.multi_hand_landmarks[:2]):
             # 获取食指和中指指尖位置
@@ -139,7 +152,9 @@ while cap.isOpened():
             distance = ((index_finger_tip.x - middle_finger_tip.x)**2 + (index_finger_tip.y - middle_finger_tip.y)**2)**0.5
             x = int(index_finger_tip.x * screen_width)
             y = int(index_finger_tip.y * screen_height)
-            pyautogui.moveTo(x, y)# 移动鼠标
+            
+            smooth_x, smooth_y = smooth_coordinates(x, y)# 平滑坐标
+            pyautogui.moveTo(smooth_x, smooth_y)# 移动鼠标
             
             # 判断手是否处于稳定状态
             if is_hand_stable(current_positions[hand_no], prev_positions[hand_no]):
@@ -173,26 +188,22 @@ while cap.isOpened():
         if current_time - last_screenshot_time > screenshot_interval:
             x1, y1 = current_positions[0]
             x2, y2 = current_positions[1]
-            # 调用截图程序, 优化此处, 异步调用, 线程处理
-            executor.submit(screenshot, x1, y1, x2, y2, image.copy())
+            executor.submit(screenshot, x1, y1, x2, y2, image.copy())# 调用截图程序
             last_screenshot_time = current_time
     
 
     # 判断单手是否处于稳定状态, 且如果判断过双手处于稳定状态则跳过单手稳定判断
     elif all(pos is not None for pos in current_positions[:1]) and all(count >= stability_threshold for count in stable_counts[:1]):
-         # 获取当前摄像头图片并保存为ocr.jpg
         if current_time - last_screenshot_time > screenshot_interval:
-            cv2.imwrite('tmp/ocr.jpg', image)
+            cv2.imwrite('tmp/ocr.jpg', image)# 获取当前摄像头图片并保存为ocr.jpg
             print("OCR image saved!")
-            # 线程调用ocr识别
-            executor.submit(ocr_picture, "tmp/ocr.jpg")
+            executor.submit(ocr_picture, "tmp/ocr.jpg")# 线程调用ocr识别
             last_screenshot_time = current_time
     else:
-        #print("Not stable")
         pass
 
 
-    # -----------------------------------------功能区截至此----------------------------------------------
+# -----------------------------------------功能区截至此-------------------------------------------------------
 
     # 更新上一帧位置
     for i in range(2):
