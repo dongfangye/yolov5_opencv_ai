@@ -9,6 +9,7 @@ from collections import deque
 
 from umi_ocr import ocr_picture
 from chattts import txt_to_audio
+from baidu_ocr import translate_image
 
 # -------------------------------------------------yolov5模型加载区-----------------------------------------------
 # 原态yolov5s模型
@@ -100,6 +101,7 @@ def smooth_coordinates(x, y):
     smooth_x = int(np.mean(x_deque))
     smooth_y = int(np.mean(y_deque))
     return smooth_x, smooth_y
+
 # ----------------------------------------------------功能模块截至此---------------------------------------------
 
 # 初始化MediaPipe
@@ -197,7 +199,8 @@ while cap.isOpened():
         if current_time - last_screenshot_time > screenshot_interval:
             cv2.imwrite('tmp/ocr.jpg', image)# 获取当前摄像头图片并保存为ocr.jpg
             print("OCR image saved!")
-            executor.submit(ocr_picture, "tmp/ocr.jpg")# 线程调用ocr识别
+            # executor.submit(ocr_picture, "tmp/ocr.jpg")# 线程调用ocr识别
+            executor.submit(translate_image, "tmp/ocr.jpg")# 线程调用ocr识别
             last_screenshot_time = current_time
     else:
         pass
