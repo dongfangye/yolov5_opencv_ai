@@ -74,13 +74,17 @@ def get_picture_understanding_result(task_id, access_token):
     while True:
         if data["result"]["ret_msg"] == "success":
             res = data["result"]["description"]
-            print(res)
-            break
+            return res
         elif data["result"]["ret_msg"] == "processing":
-            time.sleep(3)
+            time.sleep(2)
+            data = fetch_data_from_api(task_id, access_token)
+            return data
         else:
-            break
+            return "error"
 
+def fetch_data_from_api(task_id, access_token):
+    data = get_picture_understanding_result(task_id, access_token)
+    return data
 
 # 百度图像内容理解
 def image_understanding(image_path):  
@@ -98,8 +102,8 @@ def image_understanding(image_path):
     response = requests.request("POST", url, headers=headers, data=payload)
     res = response.json()
     task_id = res["result"]["task_id"] 
-    print(task_id)
-    get_picture_understanding_result(task_id,access_token)
+    data =get_picture_understanding_result(task_id,access_token)
+    print(data)
 
 if __name__ == '__main__':  
     image_understanding("data/txt3.jpg")  
