@@ -6,6 +6,15 @@ model_path = 'weights/finger.pt'  # 替换为你的本地模型路径
 model = torch.hub.load('yolov5-6.0', 'custom', path=model_path, source='local')
 # 获取摄像头
 cap = cv2.VideoCapture(0)
+# 尝试设置摄像头分辨率为2K（或尽可能接近的分辨率）  
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 2048)  
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)  
+  
+# 检查是否成功设置了分辨率  
+width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))  
+height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))  
+print(f"Camera resolution set to {width}x{height}")  
+
 while cap.isOpened():
     ret, frame = cap.read()
     if not ret:
