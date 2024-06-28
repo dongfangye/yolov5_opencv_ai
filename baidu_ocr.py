@@ -3,7 +3,9 @@ import random
 import json  
 import os  
 from hashlib import md5  
-  
+import base64
+import time
+# 百度翻译图片文字识别
 def translate_image(image_path, from_lang='zh', to_lang='en', app_id='####', app_key='####', cuid='APICUID', mac='mac'):  
     # 注意：这里假设有一个特定的API端点用于处理图片上传和翻译  
     # 您需要替换为实际的API端点  
@@ -54,6 +56,50 @@ def translate_image(image_path, from_lang='zh', to_lang='en', app_id='####', app
         print("Error:", response.status_code, response.text)  
         return None  
 
+def get_file_content_as_base64(path, urlencoded=False):
+    with open(path, "rb") as f:
+        content = base64.b64encode(f.read()).decode("utf8")
+    return content
+
+def get_picture_understanding_result(task_id, access_token):
+    url = f"https://aip.baidubce.com/rest/2.0/image-classify/v1/image-understanding/get-result?access_token={access_token}"
+    payload = json.dumps({
+        "task_id":task_id
+    })
+    headers = {
+        'Content-Type': 'application/json'
+    }
+    response = requests.request("POST", url, headers=headers, data=payload)
+    data = response.json()
+    while True:
+        if data["result"]["ret_msg"] == "success":
+            res = data["result"]["description"]
+            print(res)
+            break
+        elif data["result"]["ret_msg"] == "processing":
+            time.sleep(3)
+        else:
+            break
+
+
+# 百度图像内容理解
+def image_understanding(image_path):  
+    access_token = "#####"
+    encoded_image = get_file_content_as_base64(image_path)
+    url = f"https://aip.baidubce.com/rest/2.0/image-classify/v1/image-understanding/request?access_token={access_token}"
+    payload = json.dumps({
+        "image": encoded_image,
+        "question":"图片里面有什么",
+        "output_CHN": True
+    })
+    headers = {
+        'Content-Type': 'application/json'
+    }
+    response = requests.request("POST", url, headers=headers, data=payload)
+    res = response.json()
+    task_id = res["result"]["task_id"] 
+    print(task_id)
+    get_picture_understanding_result(task_id,access_token)
+
 if __name__ == '__main__':  
-    data = translate_image("data/txt3.jpg")
-    print(data)    
+    image_understanding("data/txt3.jpg")  
