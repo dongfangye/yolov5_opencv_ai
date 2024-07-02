@@ -8,7 +8,7 @@ import pyautogui
 from collections import deque
 
 from umi_ocr import ocr_picture
-from chattts import txt_to_audio
+from audio_txt.chattts import txt_to_audio
 from baidu.ocr_translate import translate_image
 
 # -------------------------------------------------yolov5模型加载区-----------------------------------------------
