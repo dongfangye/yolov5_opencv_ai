@@ -94,6 +94,7 @@ def count_fingers(hand_landmarks) -> int:
             fingers.append(0)
 
     return sum(fingers)
+
 # 鼠标平滑移动算法
 def smooth_coordinates(x, y):
     x_deque.append(x)
