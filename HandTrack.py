@@ -7,9 +7,11 @@ import torch
 import pyautogui
 from collections import deque
 
-from umi_ocr import ocr_picture
 from audio_txt.chattts import txt_to_audio
+
+from baidu.scene_ocr import Picture_Search
 from baidu.ocr_translate import translate_image
+from baidu.picture_understand import Picture_Understand
 
 # -------------------------------------------------yolov5模型加载区-----------------------------------------------
 # 原态yolov5s模型
@@ -48,7 +50,7 @@ def load_model(image_path: str):
         print(f"Error in load_model: {e}")
     return res
 
-# 截图 + 调用YOLOv5识别
+# 截图并将图片发送给百度图片内容理解
 def screenshot(x1, y1, x2, y2, img) -> None:
     x1, y1, x2, y2 = map(int, (x1, y1, x2, y2))
     x1, x2 = min(x1, x2), max(x1, x2)
@@ -58,7 +60,9 @@ def screenshot(x1, y1, x2, y2, img) -> None:
     cropped_path = 'tmp/screenshot.jpg' # 截图保存路径名称
     cv2.imwrite(cropped_path, cropped)
     print("Screenshot taken!")
-    executor.submit(load_model, "tmp/screnshot.jpg")# 异步调用yolov5识别图片, 避免阻塞主程序
+    question = "这是一张什么图片"
+    token = ""
+    executor.submit(Picture_Understand, "tmp/screnshot.jpg", question, token)
 
 # 判断手是否处于稳定状态
 def is_hand_stable(current_pos, prev_pos, threshold=10):
@@ -179,8 +183,8 @@ while cap.isOpened():
                     is_clicking = False
                     
             # 计算伸出的手指数量
-            num_fingers = count_fingers(hand_landmarks) # 后续调用yolov5模型取代此处识别
-            #print(5-num_fingers)# 横平放置计算
+            # num_fingers = count_fingers(hand_landmarks) # 后续调用yolov5模型取代此处识别
+            # print(5-num_fingers)# 横平放置计算
 
             cv2.circle(image, (cx, cy), 5, (0, 255, 0), -1)
             mp_drawing.draw_landmarks(image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
@@ -200,8 +204,8 @@ while cap.isOpened():
         if current_time - last_screenshot_time > screenshot_interval:
             cv2.imwrite('tmp/ocr.jpg', image)# 获取当前摄像头图片并保存为ocr.jpg
             print("OCR image saved!")
-            # executor.submit(ocr_picture, "tmp/ocr.jpg")# 线程调用ocr识别
-            executor.submit(translate_image, "tmp/ocr.jpg")# 线程调用ocr识别
+            token = ""
+            executor.submit(Picture_Search, "tmp/ocr.jpg", token)# 线程调用ocr识别
             last_screenshot_time = current_time
     else:
         pass
